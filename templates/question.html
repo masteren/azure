@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}{{ q.title }} | テスト前お助け掲示板{% endblock %}
+{% block content %}
+
+<p><a href="{{ url_for('index') }}">← 質問一覧へ</a></p>
+
+<div class="card">
+    <div>
+        <span class="tag">{{ q.subject }}</span>
+        {% if q.solved %}<span class="tag solved">✔ 解決済み</span>{% endif %}
+        {% if q.days_left is not none and q.days_left >= 0 %}
+            <span class="tag {% if q.days_left <= 3 %}soon{% endif %}">
+                {% if q.days_left == 0 %}今日がテスト！{% else %}テストまであと{{ q.days_left }}日{% endif %}
+            </span>
+        {% endif %}
+    </div>
+    <h2 style="margin:6px 0;">{{ q.title }}</h2>
+    <div class="meta">{{ q.nickname }} ・ {{ q.created_at[:16].replace('T', ' ') }}</div>
+    <p class="body">{{ q.body }}</p>
+    {% if q.image %}<img class="post-img" src="{{ url_for('image', name=q.image) }}" alt="質問の写真">{% endif %}
+
+    <form action="{{ url_for('metoo', qid=q.RowKey) }}" method="post" style="margin-top:12px;">
+        <button class="sub" {% if q.RowKey in metoo_done %}disabled{% endif %}>
+            🙋 わたしも知りたい（{{ q.metoo }}）
+        </button>
+    </form>
+</div>
+
+<h3>💬 回答（{{ answers|length }}）</h3>
+{% for a in answers %}
+<div class="card">
+    <div class="meta">{{ a.nickname }} ・ {{ a.created_at[:16].replace('T', ' ') }}</div>
+    <p class="body">{{ a.body }}</p>
+    {% if a.image %}<img class="post-img" src="{{ url_for('image', name=a.image) }}" alt="回答の写真">{% endif %}
+</div>
+{% else %}
+<p class="meta">まだ回答はありません。わかる人は教えてあげよう！</p>
+{% endfor %}
+
+<form class="card" action="{{ url_for('answer', qid=q.RowKey) }}" method="post" enctype="multipart/form-data">
+    <strong>回答する</strong>
+    <label>回答内容</label>
+    <textarea name="body" maxlength="2000" placeholder="答えだけでなく、考え方も書いてくれるとうれしい！" required></textarea>
+    <div class="grid2">
+        <div>
+            <label>ニックネーム（任意）</label>
+            <input name="nickname" maxlength="20" placeholder="名無しの先輩">
+        </div>
+        <div>
+            <label>解き方の写真（任意・5MBまで）</label>
+            <input type="file" name="image" accept="image/jpeg,image/png,image/gif,image/webp">
+        </div>
+    </div>
+    <p><button>回答を投稿</button></p>
+</form>
+
+{% if not q.solved %}
+<form class="card" action="{{ url_for('solve', qid=q.RowKey) }}" method="post">
+    <strong>質問した人へ：わかったら「解決済み」にしよう</strong>
+    <div style="display:flex; gap:8px; margin-top:8px;">
+        <input name="passcode" type="password" placeholder="投稿したときの合言葉" required>
+        <button style="white-space:nowrap;">解決済みにする</button>
+    </div>
+</form>
+{% endif %}
+
+{% endblock %}

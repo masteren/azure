@@ -1,88 +1,85 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>かんたん家計簿</title>
-    <style>
-        body { font-family: sans-serif; max-width: 640px; margin: 32px auto; padding: 0 16px; color: #222; }
-        h1 { margin-bottom: 4px; }
-        .flash { background: #fff4ce; border: 1px solid #e0c060; padding: 8px 12px; border-radius: 6px; margin: 12px 0; }
-        form.add { background: #f0f4f8; padding: 16px; border-radius: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-        form.add .full { grid-column: 1 / -1; }
-        input, select { width: 100%; padding: 8px; box-sizing: border-box; font-size: 1em; }
-        button { padding: 8px 16px; background: #0078d4; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 1em; }
-        .nav { display: flex; justify-content: space-between; align-items: center; margin: 24px 0 8px; }
-        .nav a { color: #0078d4; text-decoration: none; }
-        .total { font-size: 2em; font-weight: bold; }
-        .bar-row { display: grid; grid-template-columns: 5em 1fr 6em; gap: 8px; align-items: center; margin: 4px 0; }
-        .bar { background: #0078d4; height: 12px; border-radius: 6px; }
-        .num { text-align: right; font-variant-numeric: tabular-nums; }
-        table { width: 100%; border-collapse: collapse; margin-top: 16px; }
-        th, td { border-bottom: 1px solid #ddd; padding: 8px 4px; text-align: left; }
-        td.num, th.num { text-align: right; }
-        .del { background: none; color: #c50f1f; padding: 0; }
-        .memo { color: #666; font-size: 0.9em; }
-    </style>
-</head>
-<body>
-    <h1>かんたん家計簿</h1>
+{% extends "base.html" %}
+{% block content %}
 
-    {% for msg in get_flashed_messages() %}
-    <div class="flash">{{ msg }}</div>
-    {% endfor %}
-
-    <form class="add" action="{{ url_for('add') }}" method="post">
-        <input type="date" name="date" value="{{ today }}" required>
-        <select name="category" required>
-            {% for c in categories %}<option>{{ c }}</option>{% endfor %}
-        </select>
-        <input type="number" name="amount" placeholder="金額（円）" min="1" max="10000000" required>
-        <input type="text" name="memo" placeholder="メモ（省略可）" maxlength="100">
-        <button class="full" type="submit">追加する</button>
+<details class="card" {% if not items %}open{% endif %}>
+    <summary><strong>✏️ 質問する</strong></summary>
+    <form action="{{ url_for('ask') }}" method="post" enctype="multipart/form-data">
+        <div class="grid2">
+            <div>
+                <label>科目</label>
+                <select name="subject" required>
+                    {% for s in subjects %}<option>{{ s }}</option>{% endfor %}
+                </select>
+            </div>
+            <div>
+                <label>テストの日（任意）</label>
+                <input type="date" name="exam_date">
+            </div>
+        </div>
+        <label>タイトル</label>
+        <input name="title" maxlength="60" placeholder="例：二次関数の最大・最小がわからない" required>
+        <label>質問内容</label>
+        <textarea name="body" maxlength="2000" placeholder="どこまでわかって、どこからわからないかを書くと答えてもらいやすいよ" required></textarea>
+        <div class="grid2">
+            <div>
+                <label>ニックネーム（任意・本名は書かないでね）</label>
+                <input name="nickname" maxlength="20" placeholder="名無しの受験生">
+            </div>
+            <div>
+                <label>合言葉（解決済みにするときに使う）</label>
+                <input name="passcode" type="password" minlength="4" maxlength="20" required>
+            </div>
+        </div>
+        <label>問題やノートの写真（任意・5MBまで）</label>
+        <input type="file" name="image" accept="image/jpeg,image/png,image/gif,image/webp">
+        <p><button>質問を投稿</button></p>
     </form>
+</details>
 
-    <div class="nav">
-        <a href="{{ url_for('index', month=prev_month) }}">← {{ prev_month }}</a>
-        <strong>{{ month }}</strong>
-        <a href="{{ url_for('index', month=next_month) }}">{{ next_month }} →</a>
+<form class="card" method="get" action="{{ url_for('index') }}">
+    <div class="grid2">
+        <div>
+            <label>科目でしぼる</label>
+            <select name="subject" onchange="this.form.submit()">
+                <option value="">すべての科目</option>
+                {% for s in subjects %}<option {% if s == subject %}selected{% endif %}>{{ s }}</option>{% endfor %}
+            </select>
+        </div>
+        <div>
+            <label>並べ方</label>
+            <select name="sort" onchange="this.form.submit()">
+                <option value="new" {% if sort == 'new' %}selected{% endif %}>新しい順</option>
+                <option value="metoo" {% if sort == 'metoo' %}selected{% endif %}>「わたしも知りたい」が多い順</option>
+                <option value="exam" {% if sort == 'exam' %}selected{% endif %}>テストが近い順</option>
+            </select>
+        </div>
     </div>
+    <label style="display:flex; gap:6px; align-items:center;">
+        <input type="checkbox" name="open" value="1" style="width:auto" {% if only_open %}checked{% endif %} onchange="this.form.submit()">
+        未解決の質問だけ表示
+    </label>
+</form>
 
-    <div>今月の合計</div>
-    <div class="total">{{ "{:,}".format(total) }} 円</div>
-
-    {% if breakdown %}
-    <h2>カテゴリ別</h2>
-    {% for name, amount in breakdown %}
-    <div class="bar-row">
-        <span>{{ name }}</span>
-        <div class="bar" style="width: {{ (amount / total * 100) | round(1) }}%"></div>
-        <span class="num">{{ "{:,}".format(amount) }} 円</span>
+{% for q in items %}
+<div class="card">
+    <div>
+        <span class="tag">{{ q.subject }}</span>
+        {% if q.solved %}<span class="tag solved">✔ 解決済み</span>{% endif %}
+        {% if q.days_left is not none and q.days_left >= 0 %}
+            <span class="tag {% if q.days_left <= 3 %}soon{% endif %}">
+                {% if q.days_left == 0 %}今日がテスト！{% else %}テストまであと{{ q.days_left }}日{% endif %}
+            </span>
+        {% endif %}
     </div>
-    {% endfor %}
-    {% endif %}
+    <h3 style="margin:6px 0;"><a href="{{ url_for('question', qid=q.RowKey) }}">{{ q.title }}</a></h3>
+    <div class="meta">
+        {{ q.nickname }} ・ {{ q.created_at[:16].replace('T', ' ') }}
+        ・ 💬 回答 {{ q.answer_count }} ・ 🙋 わたしも知りたい {{ q.metoo }}
+        {% if q.image %}・ 📷 写真あり{% endif %}
+    </div>
+</div>
+{% else %}
+<p class="meta">まだ質問はありません。最初の質問をしてみよう！</p>
+{% endfor %}
 
-    <h2>明細（{{ items|length }}件）</h2>
-    {% if items %}
-    <table>
-        <tr><th>日付</th><th>カテゴリ</th><th class="num">金額</th><th></th></tr>
-        {% for e in items %}
-        <tr>
-            <td>{{ e.date[5:] }}</td>
-            <td>{{ e.category }}{% if e.memo %}<div class="memo">{{ e.memo }}</div>{% endif %}</td>
-            <td class="num">{{ "{:,}".format(e.amount) }} 円</td>
-            <td>
-                <form action="{{ url_for('delete') }}" method="post" onsubmit="return confirm('削除しますか？')">
-                    <input type="hidden" name="month" value="{{ month }}">
-                    <input type="hidden" name="row_key" value="{{ e.RowKey }}">
-                    <button class="del" type="submit">削除</button>
-                </form>
-            </td>
-        </tr>
-        {% endfor %}
-    </table>
-    {% else %}
-    <p>この月のデータはまだありません</p>
-    {% endif %}
-</body>
-</html>
+{% endblock %}
