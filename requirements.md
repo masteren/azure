@@ -90,5 +90,5 @@
 | NGワードチェック | 人を傷つける言葉が含まれる投稿は保存せず、メッセージを表示する | 5 |
 | 秘密情報の管理 | Storage の接続文字列はコードに書かず、App Service のアプリ設定（環境変数 `AZURE_STORAGE_CONNECTION_STRING`）から読み込む。リポジトリは Public なので、SAS トークン・発行プロファイル・接続文字列は入れない | — |
 
-サイトのURL：（ここに App Service の URL を記入）
+サイトのURL：https://pi52a-04-test-fab4d6dqaddgaudc.japaneast-01.azurewebsites.net
 GitHubリポジトリのURL：https://github.com/masteren/azure
